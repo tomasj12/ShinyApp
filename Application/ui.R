@@ -13,6 +13,9 @@ library(shinythemes) #umoznuje vyuzivat nice shiny temy
 library(DT)
 library(shinyBS)
 library(reader)
+library(ShinyItemAnalysis)
+library(data.table)
+library(moments)
 
 
 
@@ -22,27 +25,42 @@ shinyUI(navbarPage('Shiny application',
                    #tu by sa mali nacitat data, a vytvorit nejaky plot, najlepšie buť ak by som chcel 
                    # závislosť, alebo histogramy, teda rozdelenie atd
                    tabPanel('EDA',
-                            
-                            sidebarLayout(
-                              
-                              sidebarPanel(
-                                
-                                fileInput( inputId = 'dataLoad',
-                                           label = 'Vyber súbor obsahujúci dáta'),
-                                
-                                radioButtons( inputId = 'plotType',
+                        sidebarLayout(
+                            sidebarPanel(fileInput( inputId = 'dataLoad',
+                                                    label = 'Vyber súbor obsahujúci dáta'),
+                                         radioButtons(inputId = "separator",
+                                                      label = "Vyber typ súboru",
+                                                      choices = c(Csv = "csv",
+                                                                  Tab = "tab",
+                                                                  Raw = "raw")),
+                                         fileInput(inputId = "descr_load",
+                                                   label = "Načítaj popis dát"),
+                                         radioButtons( inputId = 'plotType',
                                               label   = 'Vyber typ grafu',
-                                              choices = c('Histogram','Scatter Plot',
-                                                          'Kolacovy diagram','Bar Plot',
-                                                          'Boxplot'))),
+                                              choices = c('Histogram','ScatterPlot',
+                                                          'Pie','BarPlot',
+                                                          'Boxplot')),
+                                         uiOutput("test"),
+                                         uiOutput("test_one"),
+                                        checkboxGroupInput( inputId = 'header',
+                                               label = 'Is file containig header?',
+                                               choices = 'Yes'),
+                                         actionButton( inputId = 'upload',
+                                              label = 'Upload data')),
                               
                               mainPanel(
-                                
-                                plotOutput('plot')
-                                
-                              )
-                              
-                            )
-                   )
+                                tabsetPanel(
+                                  tabPanel("Graf",plotOutput('plot')),
+                                  tabPanel("Data",dataTableOutput("data")),
+                                  tabPanel("Description",
+                                           fluidRow(textOutput("descr")),
+                                           br(),
+                                           fluidRow(dataTableOutput("vars"))),
+                                  tabPanel("Summary", dataTableOutput("summary"))
+    )
+   )
+  )
+ ),
+ tabPanel("Model")
 )
 )
