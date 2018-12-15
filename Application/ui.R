@@ -45,22 +45,32 @@ shinyUI(navbarPage('Shiny application',
                                         checkboxGroupInput( inputId = 'header',
                                                label = 'Is file containig header?',
                                                choices = 'Yes'),
-                                         actionButton( inputId = 'upload',
-                                              label = 'Upload data')),
+                                         fluidRow(actionButton( inputId = 'upload',
+                                                                label = 'Upload data'),
+                                                  actionButton( inputId = "show_descr",
+                                                                label = "Show description"))),
                               
                               mainPanel(
                                 tabsetPanel(
-                                  tabPanel("Graf",plotOutput('plot')),
-                                  tabPanel("Data",dataTableOutput("data")),
-                                  tabPanel("Description",
-                                           fluidRow(textOutput("descr")),
+                                  tabPanel("Description of Data",
+                                           plotOutput('plot'),
                                            br(),
-                                           fluidRow(dataTableOutput("vars"))),
-                                  tabPanel("Summary", dataTableOutput("summary"))
+                                           h3("Number characteristics"),
+                                           tableOutput("characteristics"),
+                                           br(),
+                                           h3("Other statistics"),
+                                           tableOutput("datachar")),
+                                  tabPanel("Data",
+                                           tableOutput("data")),
+                                  tabPanel("Description",
+                                           fluidRow(
+                                             textOutput("descr")),
+                                             br(),
+                                           fluidRow(tableOutput("vars"))))
     )
    )
-  )
- ),
+  ),
  tabPanel("Model")
 )
 )
+

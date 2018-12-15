@@ -51,45 +51,72 @@ shinyServer(function(input, output, session) {
   })
   
   output$plot <- renderPlot({
-    input$upload
+    req(input$upload,input$show_descr)
     #plot podla zvoleneho typu plotu
-    isolate({if ( input$plotType == 'Histogram' ) {
+    isolate({
+      if ( input$plotType == 'Histogram' ) {
       
-      ggplot( data = load_data(), aes( x = load_data()[,col()] )) +
-        geom_histogram(fill = colors()[sample(1:255,1)]) + 
-        xlab(col())+
-        theme_app()
-      
+      if(mode(load_data()[,col()]) == 'numeric'  & class(load_data()[,col()]) != 'factor') {
+          
+          ggplot( data = load_data(), aes( x = load_data()[,col()] )) +
+          geom_histogram(fill = colors()[sample(1:255,1)]) + 
+          xlab(col())+
+          theme_app()
+      } else {
+        return(NULL)
+      }
     } else if ( input$plotType == 'Scatter Plot' ) {
       
-      ggplot( data = load_data(), aes( x = load_data()[,col()[1]] , 
-              y = load_data()[,col()[2]] ) ) +
-        geom_point() +
-        theme_app()
+      if(mode(load_data()[,col()]) == 'numeric') {
       
+          ggplot( data = load_data(), aes( x = load_data()[,col()[1]] , 
+          y = load_data()[,col()[2]] ) ) +
+          geom_point() +
+          theme_app()
+      } else {
+        return(NULL)
+      }
     } else if ( input$plotType == 'Bar Plot' ) {
       
-      ggplot( data = load_data(), aes( x =  load_data()[,col()] )) +
-        geom_bar() +
-        theme_app()
-      
+      if(mode(load_data()[,col()]) == 'numeric'  & class(load_data()[,col()]) != 'factor') {
+        
+          ggplot( data = load_data(), aes( x =  load_data()[,col()] )) +
+          geom_bar() +
+          theme_app()
+      } else {
+        
+        return(NULL)
+      }
     } else if ( input$plotType == 'Kolacovy diagram' ) {
       
-      ggplot( data = load_data(), aes( x =  load_data()[,col()]) ) +
-        geom_bar() + coord_polar() +
-        theme_app()
-      
+      if(mode(load_data()[,col()]) == 'numeric'  & class(load_data()[,col()]) != 'factor') {
+        
+          ggplot( data = load_data(), aes( x =  load_data()[,col()]) ) +
+          geom_bar() + coord_polar() +
+          theme_app()
+      } else {
+        
+        
+        return(NULL)
+      }
     } else if ( input$plotType == 'Boxplot' ) {
       
-      ggplot( data = load_data(), aes( x = load_data()[,col()[1]] , 
-                                       y = load_data()[,col()[2]] ) ) +
-        geom_boxplot() +
-        theme_app()
-      
-    }})
+      if(mode(load_data()[,col()]) == 'numeric' & class(load_data()[,col()]) != 'factor') {
+        
+          ggplot( data = load_data(), aes( x = load_data()[,col()[1]] , 
+                  y = load_data()[,col()[2]] ) ) +
+          geom_boxplot() +
+          theme_app()
+      } else {
+         
+         return(NULL)
+         
+        }
+    }
+    })  
   })
   
-  output$data <- renderDataTable({
+  output$data <- renderTable({
     
     input$upload
     isolate({load_data()})
@@ -152,51 +179,56 @@ shinyServer(function(input, output, session) {
     
   })
   
-  output$vars <- renderDataTable({
+  output$vars <- renderTable({
     
     variables()
     
   })
   
+  
+  
   summary_vals <- reactive({
     
-    columns <- subset(variables(), variables()[,2] == 'integer')
-    names <- columns$Variable
-    
-    n <- length(names)
-    min <- c()
-    max <- c()
-    stQ <- c()
-    rdQ <- c()
-    med <- c()
-    mean <- c()
-    sd <- c()
-    skw <- c()
-    kurt <- c()
-    
-    
-    for (i in 1:n) {
+    req(input$dataLoad,input$variables,input$header,input$show_descr)
+    col.name  <- col()
+    char <- rep('-',length(col.name))
       
-      min[i] <- min(load_data()[,names[i]])
-      max[i] <- max(load_data()[,names[i]])
-      med[i] <- median(load_data()[,names[i]])
-      stQ[i] <- quantile(load_data()[,names[i]], probs = 0.25, type = 1)
-      rdQ[i] <- quantile(load_data()[,names[i]], probs = 0.75, type = 1)
-      mean[i] <- mean(load_data()[,names[i]])
-      sd[i] <- sd(load_data()[,names[i]])
-      skw[i] <- skewness(load_data()[,names[i]])
-      kurt[i] <- kurtosis(load_data()[,names[i]])
+    if (mode(load_data()[,col.name]) == 'numeric' & class(load_data()[,col.name]) != 'factor') {
+          
+          min  <- min(load_data()[,col.name])
+          max  <- max(load_data()[,col.name])
+          med  <- median(load_data()[,col.name])
+          stQ  <- quantile(load_data()[,col.name], probs = 0.25, type = 1)
+          rdQ  <- quantile(load_data()[,col.name], probs = 0.75, type = 1)
+          mean <- mean(load_data()[,col.name])
+          sd   <- sd(load_data()[,col.name])
+          skw  <- skewness(load_data()[,col.name])
+          kurt <- kurtosis(load_data()[,col.name])
+          
+          df <- data.table(col.name,min,max,med,mean,stQ,rdQ,sd,skw,kurt)
+          colnames(df) <- c('Variable','Min','Max','Median','Mean','1st Quartile','3rd Quartile',
+                            'Standard deviation','Skewness','Kurtosis')
+              
+      } else if (typeof(load_data()[,col.name]) == 'character') {
+        
+        df <- data.table(t(char))
+        colnames(df) <- c('Variable','Min','Max','Median','Mean','1st Quartile','3rd Quartile',
+                          'Standard deviation','Skewness','Kurtosis')
+        
+      } else if (class(load_data()[,col.name]) == 'factor') {
+        
+        string <- levels(load_data()[,col.name])
+        df <- data.table(string)
+        colnames(df) <- col.name
+        rownames(df) <- paste("V",1:length(string),sep = "")
+        df <- head(df,10)
+      }
       
-    }
-    
-    df <- data.table(names,min,max,med,mean,stQ,rdQ,sd,skw,kurt)
-    colnames(df) <- c('Variable','Min','Max','Median','Mean','1st Quartile','3rd Quartile',
-                      'Standard deviation','Skewness','Kurtosis')
-    df
+      df
     
   })
   
-  output$summary <- renderDataTable({
+  output$characteristics <- renderTable({
     
     summary_vals()
     
