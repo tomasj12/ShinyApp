@@ -16,39 +16,38 @@ library(reader)
 library(ShinyItemAnalysis)
 library(data.table)
 library(moments)
+library(latex2exp)
 
 
 
-# Define UI for application that draws a histogram
 shinyUI(navbarPage('Shiny application',
                    #tab Panel plot
                    #tu by sa mali nacitat data, a vytvorit nejaky plot, najlepšie buť ak by som chcel 
                    # závislosť, alebo histogramy, teda rozdelenie atd
                    tabPanel('EDA',
-                        sidebarLayout(
-                            sidebarPanel(fileInput( inputId = 'dataLoad',
-                                                    label = 'Vyber súbor obsahujúci dáta'),
-                                         radioButtons(inputId = "separator",
-                                                      label = "Vyber typ súboru",
-                                                      choices = c(Csv = "csv",
-                                                                  Tab = "tab",
-                                                                  Raw = "raw")),
-                                         fileInput(inputId = "descr_load",
-                                                   label = "Načítaj popis dát"),
-                                         radioButtons( inputId = 'plotType',
-                                              label   = 'Vyber typ grafu',
-                                              choices = c('Histogram','ScatterPlot',
-                                                          'Pie','BarPlot',
-                                                          'Boxplot')),
-                                         uiOutput("test"),
-                                         uiOutput("test_one"),
-                                        checkboxGroupInput( inputId = 'header',
-                                               label = 'Is file containig header?',
-                                               choices = 'Yes'),
-                                         fluidRow(actionButton( inputId = 'upload',
-                                                                label = 'Upload data'),
-                                                  actionButton( inputId = "show_descr",
-                                                                label = "Show description"))),
+                            sidebarLayout(
+                              sidebarPanel(fileInput( inputId = 'dataLoad',
+                                                      label = 'Choose a file containing data'),
+                                           radioButtons(inputId = "separator",
+                                                        label = "Choose file type",
+                                                        choices = c(Csv = "csv",
+                                                                    Tab = "tab",
+                                                                    Raw = "raw")),
+                                           fileInput(inputId = "descr_load",
+                                                     label = "Load description of dataset"),
+                                           radioButtons( inputId = 'plotType',
+                                                         label   = 'Choose type of graph',
+                                                         choices = c('Histogram','ScatterPlot',
+                                                                     'Pie','BarPlot',
+                                                                     'Boxplot')),
+                                           fluidRow(uiOutput("test")),
+                                           checkboxGroupInput( inputId = 'header',
+                                                               label = 'Is file containig header?',
+                                                               choices = 'Yes'),
+                                           fluidRow(actionButton( inputId = 'upload',
+                                                                  label = 'Upload data'),
+                                                    actionButton( inputId = "show_descr",
+                                                                  label = "Show description"))),
                               
                               mainPanel(
                                 tabsetPanel(
@@ -65,12 +64,78 @@ shinyUI(navbarPage('Shiny application',
                                   tabPanel("Description",
                                            fluidRow(
                                              textOutput("descr")),
-                                             br(),
+                                           br(),
                                            fluidRow(tableOutput("vars"))))
-    )
-   )
-  ),
- tabPanel("Model")
-)
-)
+                              )
+                            )
+                   ),
+                   tabPanel("Model",
+                            sidebarLayout(
+                              sidebarPanel(
+                                radioButtons(inputId = "type_of_model",
+                                             label = "Choose type of model",
+                                             choices = c("Linear Regression",
+                                                         "Logistic Regression",
+                                                         "SVM",
+                                                         "Decission Trees",
+                                                         "Random Forrest",
+                                                         "Naive Bayes",
+                                                         "KNN",
+                                                         "Neuron Nets")),
+                                selectInput(inputId = "pred_var",
+                                            label = "Choose variable to predict",
+                                            choices = c()),
+                                actionButton(inputId = "depend_var",
+                                             "Choose features"),
+                                br(),
+                                br(),
+                                uiOutput("apply_model")),
+                              mainPanel(verbatimTextOutput("regression"))
+                              
+                            )),
+                   tabPanel("Hypothesis testing",
+                            sidebarLayout(
+                              sidebarPanel(
+                                radioButtons(inputId = "tests",
+                                             label = "Choose type of testing",
+                                             choices = c("One sample",
+                                                         "Two sample",
+                                                         "Paired")),
+                                conditionalPanel(
+                                  condition = "input.tests == 'One sample'",
+                                  selectInput(inputId = "one_s_test",
+                                              label = "Choose one sample test",
+                                              choices = c("One sample T-test",
+                                                          "One sample Wilcoxon rank sum test",
+                                                          "One sample signed test",
+                                                          "One sample Kolomgorov - Smirnov test",
+                                                          "One sample chi square test on sample variance"))),
+                                conditionalPanel(
+                                  condition = "input.tests == 'Paired'",
+                                  selectInput(inputId = "pair_s_test",
+                                              label = "Choose paired test",
+                                              choices = c("Paired T-test",
+                                                          "Paired Wilcoxon rank sum test",
+                                                          "Paired signed test"))),
+                                conditionalPanel(
+                                  condition = "input.tests == 'Two sample'",
+                                  selectInput(inputId = "tw_s_test",
+                                              label = "Choose two sample test",
+                                              choices = c("Two sample T-test",
+                                                          "Two sample Wilcoxon rank sum test",
+                                                          "Two sample Kolomgorov - Smirnov test",
+                                                          "Two sample chi square test on equal sample variances"))),
+                                radioButtons(inputId = "hyp_type",
+                                             label = "Choose hypothesis",
+                                             choices = c("H0: mu = c vs H1: mu != c",
+                                                         "H0: mu <= vs H1: mu > c",
+                                                         "H0: mu >= c vs H1: mu < c"))
+                                
+                                
+                              ),
+                              mainPanel(
+                                verbatimTextOutput("testOutput")
+                              )))
+))
+
 
