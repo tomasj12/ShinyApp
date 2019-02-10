@@ -59,11 +59,17 @@ shinyServer(function(input, output, session) {
     #plot podla zvoleneho typu plotu
     if ( input$plotType == 'Histogram' ) {
       
+      breaks <- hist(load_data()[,col()])$breaks
+      
       if( mode(load_data()[,col()]) == 'numeric'  & class(load_data()[,col()]) != 'factor') {
         
+		c <- sample(1:657,1) 
+		
         ggplot( data = load_data(), aes( x = load_data()[,col()] )) +
-          geom_histogram(fill = colors()[sample(1:255,1)]) + 
+          geom_histogram(fill = colors()[ifelse(c %in% seq(152,359,1),sample(1:657,1),c)],aes(y = ..count../sum(..count..)),
+		  breaks = breaks, color = "black") + 
           xlab(col()) +
+		  ylab('Proportions of data') +
           theme_app()
       } else {
         return(NULL)
@@ -294,5 +300,299 @@ shinyServer(function(input, output, session) {
   #      HYPOTHESIS        #
   ##########################  
   
+  observe({
+    
+    updateSelectInput(session,"test_var",choices = colnames(load_data()))
+	updateSelectInput(session,"test_var1",choices = colnames(load_data()))	
+    
+  })
+  
+  observeEvent(input$hyp_var,{
+    
+	if (input$one_s_test == "One sample Kolomgorov - Smirnov test") {
+		
+		showModal(modalDialog( title = "Type of hypothesis",
+								radioButtons( inputId = "hyp_check",
+                                               label = "Hypothesis",
+                                               choices = c("H0 : FX = F0 vs H1: FX != F0")),
+								selectInput(inputId = "dist_type",
+											label = "Which type of distribution you want you data compare to?",
+											choices = c("Normal",
+													  "Uniform",
+													  "Exponential")),
+								conditionalPanel(
+									condition = "input.dist_type == 'Normal'",
+									numericInput(inputId = "norm_mean",
+												 label = "Set mean of normal distribution",
+												 value = 0),
+									numericInput(inputId = "norm_var",
+												 label = "Set variance of normal distribution",
+												 value = 1)),
+							    conditionalPanel(
+									condition = "input.dist_type == 'Exponential'",
+									numericInput(inputId = "exp_mean",
+												 label = "Set mean of exponential distribution",
+												 value = 1)),
+								conditionalPanel(
+									condition = "input.dist_type == 'Uniform'",
+									sliderInput(inputId = "unif_pars",
+												 label = "Set interval of uniform distribution",
+												 value = c(0,1),
+												 min = -100, 
+												 max = 100))))
+	} else {
+	
+		showModal(modalDialog( title = "Type of hypothesis",
+								radioButtons( inputId = "hyp_check",
+                                               label = "Hypothesis",
+                                               choices = c("H0 : mu = mu0 vs H1: mu != mu0",
+                                                           "H0 : mu <= mu0 vs H1: mu > mu0",
+                                                           "H0 : mu => mu0 vs H1: mu < mu0")),
+								numericInput(inputId = "hyp_par",
+                                        label = "Set mu0",
+                                        value = 0)))
+	}
+    
+  })
+  
+  mu0 <- reactive({
+    
+    return(input$hyp_par)
+    
+  })
+  
+   X <- reactive({
+    
+    return(assign(input$test_var, load_data()[,colnames(load_data()) == input$test_var]))
+    
+  })
+  
+  Y <- reactive({
+  
+	return(assign(input$test_var1, load_data()[,colnames(load_data()) == input$test_var1]))
+	
+	})
+
+  distr <- reactive({
+  
+	if(input$dist_type == "Normal") {
+	
+		return("pnorm")
+	
+	} else if (input$dist_type == "Exponential") {
+	
+		return("pexp")
+	
+	} else {
+	
+		return("punif")
+	}
+	
+  })
+  
+  params <- reactive({
+  
+   if(input$dist_type == "Normal") {
+	
+		return(c(input$norm_mean,input$norm_var))
+	
+	} else if (input$dist_type == "Exponential") {
+	
+		return(input$exp_mean)
+	
+	} 
+	
+  
+  })
+  output$testOutput <- renderPrint({
+  
+    h1 <- "H0 : mu = mu0 vs H1: mu != mu0"
+	h2 <- "H0 : mu <= mu0 vs H1: mu > mu0"
+	h3 <- "H0 : mu >= mu0 vs H1: mu < mu0"
+  
+    
+    
+	#One sample 
+	
+	if (input$tests == "One sample for quantitative data") {
+
+		# One sample T test
+		if(input$one_s_test == "One sample T-test") {
+		
+		    req(input$hyp_var,input$hyp_check,input$hyp_par)
+		
+			if (input$hyp_check == "H0 : mu = mu0 vs H1: mu != mu0") {
+      
+				return(t.test(assign(input$test_var,X()),mu = mu0()))
    
-})
+			} else if (input$hyp_check == "H0 : mu <= mu0 vs H1: mu > mu0") {
+      
+				return(t.test(assign(input$test_var,X()),mu = mu0(), alternative = "greater"))
+      
+			} else if (input$hyp_check == "H0 : mu >= mu0 vs H1: mu < mu0") {
+      
+				return(t.test(assign(input$test_var,X()),mu = mu0(), alternative = "less"))
+      
+			}
+    
+	    # One sample wilcoxon
+		} else if (input$one_s_test == "One sample Wilcoxon rank sum test") {
+		
+		
+			req(input$hyp_var,input$hyp_check,input$hyp_par)
+			
+			if (input$hyp_check == "H0 : mu = mu0 vs H1: mu != mu0") {
+      
+				return(wilcox.test(assign(input$test_var,X()),mu = mu0()))
+   
+			} else if (input$hyp_check == "H0 : mu <= mu0 vs H1: mu > mu0") {
+      
+				return(wilcox.test(assign(input$test_var,X()),mu = mu0(), alternative = "greater"))
+      
+			} else if (input$hyp_check == "H0 : mu >= mu0 vs H1: mu < mu0") {
+      
+				return(wilcox.test(assign(input$test_var,X()),mu = mu0(), alternative = "less"))
+      
+			}
+		#One sample signed test
+		} else if (input$one_s_test == "One sample signed test") {
+			
+			req(input$hyp_var,input$hyp_check,input$hyp_par)
+			
+			if (input$hyp_check == "H0 : mu = mu0 vs H1: mu != mu0") {
+      
+				return(wilcox.test(assign(input$test_var,X()),mu = mu0()))
+   
+			} else if (input$hyp_check == "H0 : mu <= mu0 vs H1: mu > mu0") {
+      
+				return(wilcox.test(assign(input$test_var,X()),mu = mu0(), alternative = "greater"))
+      
+			} else if (input$hyp_check == "H0 : mu >= mu0 vs H1: mu < mu0") {
+      
+				return(wilcox.test(assign(input$test_var,X()),mu = mu0(), alternative = "less"))
+      
+			}
+		#One sample KS test
+		} else if (input$one_s_test == "One sample Kolomgorov - Smirnov test") {
+		
+            req(input$dist_type,input$hyp_check)
+			
+			return(ks.test(X(),distr(),params()[1],params()[2]))
+   
+		} else if (input$one_s_test == "One sample signed test") {
+		
+			req(input$hyp_var,input$hyp_check,input$hyp_par)
+			
+			if (input$hyp_check == "H0 : mu = mu0 vs H1: mu != mu0") {
+      
+				return(wilcox.test(assign(input$test_var,X()),mu = mu0()))
+   
+			} else if (input$hyp_check == "H0 : mu <= mu0 vs H1: mu > mu0") {
+      
+				return(wilcox.test(assign(input$test_var,X()),mu = mu0(), alternative = "greater"))
+      
+			} else if (input$hyp_check == "H0 : mu >= mu0 vs H1: mu < mu0") {
+      
+				return(wilcox.test(assign(input$test_var,X()),mu = mu0(), alternative = "less"))
+      
+			}
+			
+		#One sample chi square test
+		} else if (input$one_s_test == "One sample chi square test on sample variance") {
+		
+			req(input$hyp_var,input$hyp_check,input$hyp_par)
+			
+			if (input$hyp_check == "H0 : mu = mu0 vs H1: mu != mu0") {
+      
+				return(wilcox.test(assign(input$test_var,X()),mu = mu0()))
+   
+			} else if (input$hyp_check == "H0 : mu <= mu0 vs H1: mu > mu0") {
+      
+				return(wilcox.test(assign(input$test_var,X()),mu = mu0(), alternative = "greater"))
+      
+			} else if (input$hyp_check == "H0 : mu >= mu0 vs H1: mu < mu0") {
+      
+				return(wilcox.test(assign(input$test_var,X()),mu = mu0(), alternative = "less"))
+      
+			}
+		}
+		
+	#Two sample tests
+		
+	} else if (input$tests == "Two sample for quantitative data") {
+	
+		if (input$tw_s_test == "Two sample T-test") {
+			
+			req(input$hyp_var,input$hyp_check,input$hyp_par)
+			
+			if (input$hyp_check == "H0 : mu = mu0 vs H1: mu != mu0") {
+      
+				return(t.test(assign(input$test_var,X()),assign(input$test_var,Y()),mu = mu0()))
+   
+			} else if (input$hyp_check == "H0 : mu <= mu0 vs H1: mu > mu0") {
+      
+				return(t.test(assign(input$test_var,X()),assign(input$test_var,Y()),mu = mu0(), alternative = "greater"))
+      
+			} else if (input$hyp_check == "H0 : mu >= mu0 vs H1: mu < mu0") {
+      
+				return(t.test(assign(input$test_var,X()),assign(input$test_var,Y()),mu = mu0(), alternative = "less"))
+      
+			}
+		} else if (input$tw_s_test == "Two sample Wilcoxon rank sum test") {
+			
+			req(input$hyp_var,input$hyp_check,input$hyp_par)
+			
+			if (input$hyp_check == "H0 : mu = mu0 vs H1: mu != mu0") {
+      
+				return(wilcox.test(assign(input$test_var,X()),assign(input$test_var,Y()),mu = mu0()))
+   
+			} else if (input$hyp_check == "H0 : mu <= mu0 vs H1: mu > mu0") {
+      
+				return(wilcox.test(assign(input$test_var,X()),assign(input$test_var,Y()),mu = mu0(), alternative = "greater"))
+      
+			} else if (input$hyp_check == "H0 : mu >= mu0 vs H1: mu < mu0") {
+      
+				return(wilcox.test(assign(input$test_var,X()),assign(input$test_var,Y()),mu = mu0(), alternative = "less"))
+      
+			}
+		
+		} else if (input$tw_s_test == "Two sample Kolomgorov - Smirnov test") {
+			
+			req(input$hyp_var,input$hyp_check,input$hyp_par)
+			
+			if (input$hyp_check == "H0 : mu = mu0 vs H1: mu != mu0") {
+      
+				return(wilcox.test(assign(input$test_var,X()),assign(input$test_var,Y())))
+   
+			} else if (input$hyp_check == "H0 : mu <= mu0 vs H1: mu > mu0") {
+      
+				return(wilcox.test(assign(input$test_var,X()),assign(input$test_var,Y()), alternative = "greater"))
+      
+			} else if (input$hyp_check == "H0 : mu >= mu0 vs H1: mu < mu0") {
+      
+				return(wilcox.test(assign(input$test_var,X()),assign(input$test_var,Y()),mu = mu0(), alternative = "less"))
+      
+			}
+		
+		} else if (input$tw_s_test == "Two sample chi square test on equal sample variances") {
+			
+			req(input$hyp_var,input$hyp_check,input$hyp_par)
+			
+			if (input$hyp_check == "H0 : mu = mu0 vs H1: mu != mu0") {
+      
+				return(var.test(assign(input$test_var,X()),assign(input$test_var,Y()),ratio = mu0()))
+   
+			} else if (input$hyp_check == "H0 : mu <= mu0 vs H1: mu > mu0") {
+      
+				return(var.test(assign(input$test_var,X()),assign(input$test_var,Y()),ratio = mu0(), alternative = "greater"))
+      
+			} else if (input$hyp_check == "H0 : mu >= mu0 vs H1: mu < mu0") {
+      
+				return(var.test(assign(input$test_var,X()),assign(input$test_var,Y()),ratio = mu0(), alternative = "less"))
+      
+			}
+		}
+	}
+  })
+  
+})  
